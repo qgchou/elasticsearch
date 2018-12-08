@@ -173,6 +173,7 @@ public class NodeJoinController extends AbstractComponent {
      * <p>
      * Note: doesn't do any validation. This should have been done before.
      */
+    //处理连接请求
     public synchronized void handleJoinRequest(final DiscoveryNode node, final MembershipAction.JoinCallback callback) {
         if (electionContext != null) {
             electionContext.addIncomingJoin(node, callback);

@@ -36,6 +36,8 @@ import static java.util.stream.Collectors.toSet;
 
 public abstract class AbstractRestChannel implements RestChannel {
 
+    //函数式接口Predicate，其函数描述符（抽象方法的签名）是`boolean test(T t);`
+    //由此可见方法参数是泛型T，返回值为布尔型
     private static final Predicate<String> INCLUDE_FILTER = f -> f.charAt(0) != '-';
     private static final Predicate<String> EXCLUDE_FILTER = INCLUDE_FILTER.negate();
 
@@ -102,6 +104,8 @@ public abstract class AbstractRestChannel implements RestChannel {
         Set<String> excludes = Collections.emptySet();
         if (useFiltering) {
             Set<String> filters = Strings.tokenizeByCommaToSet(filterPath);
+            //filter方法的参数是Predicate类型，在其实现中调用了predicate的test方法，
+            //以`INCLUDE_FILTER`为例，则是输入字符串，判断条件`f.charAt(0) != '-'`是否满足进行筛选
             includes = filters.stream().filter(INCLUDE_FILTER).collect(toSet());
             excludes = filters.stream().filter(EXCLUDE_FILTER).map(f -> f.substring(1)).collect(toSet());
         }

@@ -439,6 +439,7 @@ public class ZenDiscovery extends AbstractLifecycleComponent implements Discover
         final Thread currentThread = Thread.currentThread();
         nodeJoinController.startElectionContext();
         while (masterNode == null && joinThreadControl.joinThreadActive(currentThread)) {
+            //每个候选人选一个它认为的master，假设这里是Node_A选Node_B当Master
             masterNode = findMaster();
         }
 
@@ -448,8 +449,10 @@ public class ZenDiscovery extends AbstractLifecycleComponent implements Discover
         }
 
         if (transportService.getLocalNode().equals(masterNode)) {
+            //Node_A选自己当Master
             final int requiredJoins = Math.max(0, electMaster.minimumMasterNodes() - 1); // we count as one
             logger.debug("elected as master, waiting for incoming joins ([{}] needed)", requiredJoins);
+            //Node_A开始等join(选票)
             nodeJoinController.waitToBeElectedAsMaster(requiredJoins, masterElectionWaitForJoinsTimeout,
                     new NodeJoinController.ElectionCallback() {
                         @Override
@@ -471,21 +474,26 @@ public class ZenDiscovery extends AbstractLifecycleComponent implements Discover
             );
         } else {
             // process any incoming joins (they will fail because we are not the master)
+            //Node_A选Node_B为Master，Node_A不再接受选主投票
             nodeJoinController.stopElectionContext(masterNode + " elected");
 
             // send join request
+            //Node_A会向Node_B发送join请求（Node_A给Node_B投票）
             final boolean success = joinElectedMaster(masterNode);
 
             synchronized (stateMutex) {
                 if (success) {
+                    //获取当前的master
                     DiscoveryNode currentMasterNode = this.clusterState().getNodes().getMasterNode();
                     if (currentMasterNode == null) {
+                        //Node_B在竞选Master
                         // Post 1.3.0, the master should publish a new cluster state before acking our join request. we now should have
                         // a valid master.
                         logger.debug("no master node is set, despite of join request completing. retrying pings.");
                         joinThreadControl.markThreadAsDoneAndStartNew(currentThread);
                     } else if (currentMasterNode.equals(masterNode) == false) {
                         // update cluster state
+                        //Node_B不是Master
                         joinThreadControl.stopRunningThreadAndRejoin("master_switched_while_finalizing_join");
                     }
 
@@ -506,6 +514,7 @@ public class ZenDiscovery extends AbstractLifecycleComponent implements Discover
     private boolean joinElectedMaster(DiscoveryNode masterNode) {
         try {
             // first, make sure we can connect to the master
+            //先确认目标节点是可达的
             transportService.connectToNode(masterNode);
         } catch (Exception e) {
             logger.warn(() -> new ParameterizedMessage("failed to connect to master [{}], retrying...", masterNode), e);
@@ -515,6 +524,7 @@ public class ZenDiscovery extends AbstractLifecycleComponent implements Discover
         while (true) {
             try {
                 logger.trace("joining master {}", masterNode);
+                //下面很重要，向目标节点发送join请求
                 membership.sendJoinRequestBlocking(masterNode, transportService.getLocalNode(), joinTimeout);
                 return true;
             } catch (Exception e) {
@@ -856,6 +866,7 @@ public class ZenDiscovery extends AbstractLifecycleComponent implements Discover
         }
     }
 
+    //处理连接请求
     void handleJoinRequest(final DiscoveryNode node, final ClusterState state, final MembershipAction.JoinCallback callback) {
         if (nodeJoinController == null) {
             throw new IllegalStateException("discovery module is not yet started");
@@ -1010,8 +1021,10 @@ public class ZenDiscovery extends AbstractLifecycleComponent implements Discover
         assert Thread.holdsLock(stateMutex);
 
         if (otherClusterStateVersion > localClusterState.version()) {
+            //version小的执行rejoin
             rejoin("zen-disco-discovered another master with a new cluster_state [" + otherMaster + "][" + reason + "]");
         } else {
+            //version值大的为master
             // TODO: do this outside mutex
             logger.warn("discovered [{}] which is also master but with an older cluster_state, telling [{}] to rejoin the cluster ([{}])", otherMaster, otherMaster, reason);
             try {

@@ -574,6 +574,7 @@ public class TransportService extends AbstractLifecycleComponent {
 
     }
 
+    //qg：内部的http通信，都是这种用字符串action的形式
     private <T extends TransportResponse> void sendRequestInternal(final Transport.Connection connection, final String action,
                                                                    final TransportRequest request,
                                                                    final TransportRequestOptions options,

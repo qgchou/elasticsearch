@@ -297,6 +297,7 @@ public class UnicastZenPing extends AbstractComponent implements ZenPing {
             seedNodes = resolveHostsLists(
                 unicastZenPingExecutorService,
                 logger,
+                //configuredHosts是配置文件里的discovery.zen.ping.unicast.hosts，如果这个配置项没配，则默认取本机的本地地址
                 configuredHosts,
                 limitPortCounts,
                 transportService,

@@ -72,7 +72,7 @@ public class MembershipAction extends AbstractComponent {
         this.transportService = transportService;
         this.listener = listener;
 
-
+        //这里注册这个 ACTION_NAME 对应的真正处理方法是 JoinRequestRequestHandler
         transportService.registerRequestHandler(DISCOVERY_JOIN_ACTION_NAME, JoinRequest::new,
             ThreadPool.Names.GENERIC, new JoinRequestRequestHandler());
         transportService.registerRequestHandler(DISCOVERY_JOIN_VALIDATE_ACTION_NAME,
@@ -93,6 +93,9 @@ public class MembershipAction extends AbstractComponent {
     }
 
     public void sendJoinRequestBlocking(DiscoveryNode masterNode, DiscoveryNode node, TimeValue timeout) {
+        //这里投票请求是异步处理的，机制是通过某个操作对应的 ACTION_NAME，
+        //真正的处理逻辑在 org.elasticsearch.discovery.zen.MembershipAction#JoinRequestRequestHandler
+        //参考方法 org.elasticsearch.discovery.zen.MembershipAction#MembershipAction
         transportService.submitRequest(masterNode, DISCOVERY_JOIN_ACTION_NAME, new JoinRequest(node),
             EmptyTransportResponseHandler.INSTANCE_SAME).txGet(timeout.millis(), TimeUnit.MILLISECONDS);
     }
