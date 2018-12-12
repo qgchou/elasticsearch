@@ -479,14 +479,15 @@ public class ZenDiscovery extends AbstractLifecycleComponent implements Discover
 
             // send join request
             //Node_A会向Node_B发送join请求（Node_A给Node_B投票）
+            //success为true表示收到了join请求的确认，并且已经收到了集群状态。
             final boolean success = joinElectedMaster(masterNode);
 
             synchronized (stateMutex) {
                 if (success) {
-                    //获取当前的master
+                    //获取当前集群中的master
                     DiscoveryNode currentMasterNode = this.clusterState().getNodes().getMasterNode();
                     if (currentMasterNode == null) {
-                        //Node_B在竞选Master
+                        //还没选出master，Node_B在竞选Master
                         // Post 1.3.0, the master should publish a new cluster state before acking our join request. we now should have
                         // a valid master.
                         logger.debug("no master node is set, despite of join request completing. retrying pings.");
@@ -496,7 +497,7 @@ public class ZenDiscovery extends AbstractLifecycleComponent implements Discover
                         //Node_B不是Master
                         joinThreadControl.stopRunningThreadAndRejoin("master_switched_while_finalizing_join");
                     }
-
+                    //当选的master是选择的Node_B
                     joinThreadControl.markThreadAsDone(currentThread);
                 } else {
                     // failed to join. Try again...
@@ -632,6 +633,7 @@ public class ZenDiscovery extends AbstractLifecycleComponent implements Discover
 
             final ClusterTasksResult.Builder<Task> resultBuilder = ClusterTasksResult.<Task>builder().successes(tasks);
             if (electMasterService.hasEnoughMasterNodes(remainingNodesClusterState.nodes()) == false) {
+                //集群中还有多少个候选主节点？
                 final int masterNodes = electMasterService.countMasterNodes(remainingNodesClusterState.nodes());
                 rejoin.accept(LoggerMessageFormat.format("not enough master nodes (has [{}], but needed [{}])",
                                                          masterNodes, electMasterService.minimumMasterNodes()));
@@ -873,6 +875,8 @@ public class ZenDiscovery extends AbstractLifecycleComponent implements Discover
         } else {
             // we do this in a couple of places including the cluster update thread. This one here is really just best effort
             // to ensure we fail as fast as possible.
+            //把参数node/state传入每个BiConsumer的实现中，这里onJoinValidators是一个BiConsumer集合，每一个BiConsumer是一个验证器
+            //把node/state经过若干个验证器进行验证。
             onJoinValidators.stream().forEach(a -> a.accept(node, state));
             if (state.getBlocks().hasGlobalBlock(STATE_NOT_RECOVERED_BLOCK) == false) {
                 MembershipAction.ensureMajorVersionBarrier(node.getVersion(), state.getNodes().getMinNodeVersion());
@@ -1020,6 +1024,8 @@ public class ZenDiscovery extends AbstractLifecycleComponent implements Discover
         assert localClusterState.nodes().isLocalNodeElectedMaster() : "handleAnotherMaster called but current node is not a master";
         assert Thread.holdsLock(stateMutex);
 
+        //这里用集群状态的version判断以哪个mater为准，我觉得这里的version类似于raft协议中的term
+        //参考raft原理的动画：http://thesecretlivesofdata.com/raft/
         if (otherClusterStateVersion > localClusterState.version()) {
             //version小的执行rejoin
             rejoin("zen-disco-discovered another master with a new cluster_state [" + otherMaster + "][" + reason + "]");
@@ -1281,6 +1287,7 @@ public class ZenDiscovery extends AbstractLifecycleComponent implements Discover
             if (!markThreadAsDone(joinThread)) {
                 return;
             }
+            //选主线程结束后重新选主
             startNewThreadIfNotRunning();
         }
 

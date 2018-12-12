@@ -189,6 +189,7 @@ public class NodeJoinController extends AbstractComponent {
      * checks if there is an on going request to become master and if it has enough pending joins. If so, the node will
      * become master via a ClusterState update task.
      */
+    //判断自己的选票是否够数
     private synchronized void checkPendingJoinsAndElectIfNeeded() {
         assert electionContext != null : "election check requested but no active context";
         final int pendingMasterJoins = electionContext.getPendingMasterJoinsCount();
@@ -263,6 +264,7 @@ public class NodeJoinController extends AbstractComponent {
         public synchronized int getPendingMasterJoinsCount() {
             int pendingMasterJoins = 0;
             for (DiscoveryNode node : joinRequestAccumulator.keySet()) {
+                //过滤出masterCandidate的投票
                 if (node.isMasterNode()) {
                     pendingMasterJoins++;
                 }

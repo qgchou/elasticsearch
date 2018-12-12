@@ -106,6 +106,7 @@ public abstract class AbstractRestChannel implements RestChannel {
             Set<String> filters = Strings.tokenizeByCommaToSet(filterPath);
             //filter方法的参数是Predicate类型，在其实现中调用了predicate的test方法，
             //以`INCLUDE_FILTER`为例，则是输入字符串，判断条件`f.charAt(0) != '-'`是否满足进行筛选
+            //`f.charAt(0) != '-'`就是对predicate的test方法的具体实现
             includes = filters.stream().filter(INCLUDE_FILTER).collect(toSet());
             excludes = filters.stream().filter(EXCLUDE_FILTER).map(f -> f.substring(1)).collect(toSet());
         }
